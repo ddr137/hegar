@@ -215,6 +215,59 @@ export default class HegarUnifiedSidebar extends View {
     });
   }
 
+  renderTreeGlyph(l, t, rowH = 28, gap = 2) {
+    const lineColor = t.input ?? t.border ?? "#3a3a44";
+    const cell = div().w(20).h(rowH).relative().flex_none();
+    if (!l) return cell;
+
+    const halfH = Math.round(rowH / 2);
+    const isBranch = l === "└" || l === "├";
+    const hasBottom = l === "│" || l === "├";
+
+    if (l === "│") {
+      return cell.child(
+        div()
+          .absolute()
+          .top(-gap)
+          .bottom(0)
+          .left(8)
+          .w(1)
+          .border_l(1.5)
+          .border_color(lineColor),
+      );
+    }
+
+    if (isBranch) {
+      cell.child(
+        div()
+          .absolute()
+          .top(-gap)
+          .left(8)
+          .w(12)
+          .h(halfH + gap)
+          .border_l(1.5)
+          .border_b(1.5)
+          .rounded_bl(4)
+          .border_color(lineColor),
+      );
+    }
+
+    if (hasBottom) {
+      cell.child(
+        div()
+          .absolute()
+          .top(halfH)
+          .bottom(0)
+          .left(8)
+          .w(1)
+          .border_l(1.5)
+          .border_color(lineColor),
+      );
+    }
+
+    return cell;
+  }
+
   renderSubRow(t, item, shownAddress, listedMap) {
     const k = item.t;
     const st = kidStatus(k, listedMap);
@@ -223,15 +276,13 @@ export default class HegarUnifiedSidebar extends View {
 
     return h_flex()
       .id(`sub-${k.address}`)
-      .pl(28)
+      .pl(8)
       .pr(8)
       .h(26)
-      .gap(4)
+      .gap(0)
       .items_center()
-      .rounded(8)
-      .text_size(12.5)
-      .when(isFocused, (el) => el.bg(t.selected))
-      .when(!isFocused, (el) => el.hover((el) => el.bg(t.hover)))
+      .rounded(6)
+      .hover((el) => el.bg(t.hover))
       .cursor_pointer()
       .on_click(() => {
         if (listedMap.has(k.address)) {
@@ -241,80 +292,83 @@ export default class HegarUnifiedSidebar extends View {
         }
       })
       .on_mouse_down("right", () => this.openPaneMenu(k.pane, k.address))
-      .child(
-        div()
-          .font_family("monospace")
-          .text_color(t.dim ?? "#666")
-          .child(item.lines.join("")),
-      )
+      .children(item.lines.map((l) => this.renderTreeGlyph(l, t, 26, 2)))
+      .child(div().w(4).flex_none())
       .when(Boolean(pic), (el) => el.child(pic))
+      .child(div().w(6).flex_none())
       .child(
         div()
           .flex_1()
           .truncate()
-          .text_size(12.5)
+          .text_size(12)
           .text_color(isFocused ? t.foreground : t.muted)
           .child(clean(k.title) || k.program?.name || "Sub-agent"),
       )
       .child(this.statusBadge(t, st));
   }
 
-  renderAgentRow(t, a, allTerminals, shownAddress, listedMap, cx) {
+  renderAgentRow(t, a, agentIndex, totalAgents, allTerminals, shownAddress, listedMap, cx) {
     const isFolded = this.foldedAgents.has(a.address);
     const pic = icon(a.program, 16, t.foreground);
-    const subs = getSubAgentTree(allTerminals, a.address);
+    const isLastAgent = agentIndex === totalAgents - 1;
+    const subs = getSubAgentTree(allTerminals, a.address, [isLastAgent ? "" : "│"]);
     const hasSubs = subs.length > 0;
     const isFocused = a.address === shownAddress;
 
+    const foldBtn = div()
+      .id(`ag-fold-${a.address}`)
+      .h(18)
+      .px(3)
+      .gap(2)
+      .flex()
+      .items_center()
+      .rounded(4)
+      .text_size(10.5)
+      .text_color(t.dim)
+      .cursor_pointer()
+      .hover((el) => el.bg(t.hover).text_color(t.foreground))
+      .on_click((e, cx) => {
+        cx.stop_propagation();
+        if (isFolded) {
+          this.foldedAgents.delete(a.address);
+        } else {
+          this.foldedAgents.add(a.address);
+        }
+        cx.notify();
+      })
+      .child(
+        svg(`mods/workspace-chrome/chevron-${isFolded ? "right" : "down"}.svg`)
+          .size(10)
+          .text_color(t.dim),
+      )
+      .when(isFolded, (el) => el.child(String(subs.length)));
+
     const row = h_flex()
       .id(`agent-${a.address}`)
-      .pl(22)
+      .pl(8)
       .pr(8)
-      .h(30)
-      .gap(6)
+      .h(28)
+      .gap(0)
       .items_center()
-      .rounded(8)
-      .when(isFocused, (el) => el.bg(t.selected))
-      .when(!isFocused, (el) => el.hover((el) => el.bg(t.hover)))
+      .rounded(6)
+      .hover((el) => el.bg(t.hover))
       .cursor_pointer()
       .on_click(() => run("pane.focus", { terminal: a.address }))
       .on_mouse_down("right", () => this.openPaneMenu(a.pane, a.address))
-      .when(hasSubs, (el) =>
-        el.child(
-          div()
-            .size(16)
-            .flex_none()
-            .flex()
-            .items_center()
-            .justify_center()
-            .cursor_pointer()
-            .on_click((e, cx) => {
-              cx.stop_propagation();
-              if (isFolded) {
-                this.foldedAgents.delete(a.address);
-              } else {
-                this.foldedAgents.add(a.address);
-              }
-              cx.notify();
-            })
-            .child(
-              svg(`mods/workspace-chrome/chevron-${isFolded ? "right" : "down"}.svg`)
-                .size(11)
-                .text_color(t.dim),
-            ),
-        ),
-      )
-      .when(!hasSubs, (el) => el.child(div().size(16).flex_none()))
+      .child(this.renderTreeGlyph(isLastAgent ? "└" : "├", t, 28, 2))
+      .child(div().w(4).flex_none())
       .when(Boolean(pic), (el) => el.child(pic))
+      .child(div().w(6).flex_none())
       .child(
         div()
           .flex_1()
           .truncate()
-          .text_size(13)
+          .text_size(12.5)
           .font_medium()
           .text_color(isFocused ? t.foreground : t.muted)
           .child(clean(a.title) || a.program?.name || "Agent"),
       )
+      .when(hasSubs, (el) => el.child(foldBtn))
       .child(this.statusBadge(t, a.status));
 
     if (isFolded || !hasSubs) {
@@ -631,15 +685,32 @@ export default class HegarUnifiedSidebar extends View {
     const agentElements =
       spaceAgents.length === 0
         ? [
-            div()
-              .pl(34)
-              .py(4)
-              .text_size(11)
-              .text_color(t.dim ?? "#666")
-              .child("No active agents"),
+            h_flex()
+              .pl(8)
+              .pr(8)
+              .h(24)
+              .gap(0)
+              .items_center()
+              .child(this.renderTreeGlyph("└", t, 24, 2))
+              .child(div().w(4).flex_none())
+              .child(
+                div()
+                  .text_size(11)
+                  .text_color(t.dim ?? "#666")
+                  .child("No active agents"),
+              ),
           ]
-        : spaceAgents.flatMap((a) =>
-            this.renderAgentRow(t, a, allTerminals, shownAddress, listedMap, cx),
+        : spaceAgents.flatMap((a, idx) =>
+            this.renderAgentRow(
+              t,
+              a,
+              idx,
+              spaceAgents.length,
+              allTerminals,
+              shownAddress,
+              listedMap,
+              cx,
+            ),
           );
 
     return [...items, ...agentElements];
@@ -717,7 +788,7 @@ export default class HegarUnifiedSidebar extends View {
           .min_h(0)
           .px(6)
           .py(4)
-          .gap(4)
+          .gap(2)
           .overflow_y_scrollbar()
           .mode("always")
           .children(
