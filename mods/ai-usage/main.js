@@ -19,6 +19,18 @@ function formatResetTime(isoStr) {
   return remHours > 0 ? `Refreshes in ${days}d ${remHours}h` : `Refreshes in ${days}d`;
 }
 
+function getUsageColor(pct, isUsage = true) {
+  if (isUsage) {
+    if (pct >= 85) return "#f87171"; // Coral / Red (Critical)
+    if (pct >= 60) return "#facc15"; // Yellow / Amber (Warning)
+    return "#86efac"; // Soft green (Normal)
+  } else {
+    if (pct <= 15) return "#f87171"; // Coral / Red (Critical low)
+    if (pct <= 40) return "#facc15"; // Yellow / Amber (Warning)
+    return "#86efac"; // Soft green (Healthy)
+  }
+}
+
 export default class AIUsageView extends View {
   init(_props, cx) {
     this.loading = false;
@@ -137,19 +149,20 @@ export default class AIUsageView extends View {
     const clGpt5h = qAgy.claudeGpt.fiveHourPct ?? 100;
     const clGptWk = qAgy.claudeGpt.weeklyPct ?? 100;
 
-    const clSessColor = clSess >= 85 ? "#f87171" : clSess >= 50 ? "#fbbf24" : "#86efac";
-    const clWeekColor = clWeek >= 85 ? "#f87171" : clWeek >= 50 ? "#fbbf24" : "#86efac";
-    const gem5hColor = gem5h <= 20 ? "#f87171" : gem5h <= 60 ? "#fbbf24" : "#86efac";
-    const gemWkColor = gemWk <= 20 ? "#f87171" : gemWk <= 60 ? "#fbbf24" : "#86efac";
-    const clGpt5hColor = clGpt5h <= 20 ? "#f87171" : clGpt5h <= 60 ? "#fbbf24" : "#86efac";
-    const clGptWkColor = clGptWk <= 20 ? "#f87171" : clGptWk <= 60 ? "#fbbf24" : "#86efac";
+    const clSessColor = getUsageColor(clSess, true);
+    const clWeekColor = getUsageColor(clWeek, true);
+    const gem5hColor = getUsageColor(gem5h, false);
+    const gemWkColor = getUsageColor(gemWk, false);
+    const clGpt5hColor = getUsageColor(clGpt5h, false);
+    const clGptWkColor = getUsageColor(clGptWk, false);
 
     const progressBar = (pct, color) =>
       div()
-        .h(4)
+        .h(4.5)
         .w_full()
         .rounded_full()
-        .bg("#28282d")
+        .bg("#242429")
+        .relative()
         .overflow_hidden()
         .child(
           div()
@@ -157,6 +170,17 @@ export default class AIUsageView extends View {
             .w(`${Math.min(100, Math.max(0, pct))}%`)
             .rounded_full()
             .bg(color),
+        )
+        .when(pct > 0 && pct < 100, (el) =>
+          el.child(
+            div()
+              .absolute()
+              .top(0)
+              .bottom(0)
+              .left(`${Math.min(97, Math.max(3, pct))}%`)
+              .w(1.5)
+              .bg("#ffffffcc"),
+          ),
         );
 
     return v_flex()

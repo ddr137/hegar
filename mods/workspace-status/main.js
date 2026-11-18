@@ -16,6 +16,18 @@ function formatResetCompact(isoStr) {
   return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
 }
 
+function getUsageColor(pct, isUsage = true) {
+  if (isUsage) {
+    if (pct >= 85) return "#f87171"; // Coral / Red (Critical)
+    if (pct >= 60) return "#facc15"; // Yellow / Amber (Warning)
+    return "#86efac"; // Soft green (Normal)
+  } else {
+    if (pct <= 15) return "#f87171"; // Coral / Red (Critical low)
+    if (pct <= 40) return "#facc15"; // Yellow / Amber (Warning)
+    return "#86efac"; // Soft green (Healthy)
+  }
+}
+
 function parseClaudeReset(str) {
   if (!str) return "";
   try {
@@ -144,13 +156,14 @@ export default class WorkspaceStatus extends View {
         .child(svg(`mods/workspace-chrome/${icon}.svg`).size(13))
         .child(text);
 
-    // Mini Progress Bar
+    // Mini Progress Bar matching official style with needle marker
     const miniBar = (pct, color) =>
       div()
-        .w(26)
+        .w(28)
         .h(3.5)
         .rounded_full()
-        .bg("#28282d")
+        .bg("#242429")
+        .relative()
         .overflow_hidden()
         .child(
           div()
@@ -158,23 +171,22 @@ export default class WorkspaceStatus extends View {
             .w(`${Math.min(100, Math.max(0, pct))}%`)
             .rounded_full()
             .bg(color),
+        )
+        .when(pct > 0 && pct < 100, (el) =>
+          el.child(
+            div()
+              .absolute()
+              .top(0)
+              .bottom(0)
+              .left(`${Math.min(94, Math.max(6, pct))}%`)
+              .w(1.5)
+              .bg("#ffffffcc"),
+          ),
         );
 
     // Metric item helper (5h / wk)
     const metricItem = (labelStr, pct, resetStr, isUsage = false) => {
-      let color = "#86efac"; // green
-      if (isUsage) {
-        // For Claude (used %)
-        if (pct >= 85) color = "#f87171"; // pink/coral
-        else if (pct >= 50) color = "#fbbf24"; // amber/gold
-        else color = "#86efac"; // green
-      } else {
-        // For Antigravity (remaining %)
-        if (pct <= 20) color = "#f87171"; // coral/red
-        else if (pct <= 60) color = "#fbbf24"; // amber/gold
-        else color = "#86efac"; // green
-      }
-
+      const color = getUsageColor(pct, isUsage);
       const textVal = resetStr ? `${pct}% · ${resetStr}` : `${pct}%`;
 
       return h_flex()
