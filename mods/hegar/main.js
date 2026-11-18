@@ -1066,18 +1066,18 @@ export default class HegarUnifiedSidebar extends View {
           )
           .child(
             div()
-              .size(18)
-              .rounded(3)
+              .size(20)
+              .rounded(4)
               .flex()
               .items_center()
               .justify_center()
               .cursor_pointer()
-              .hover((el) => el.bg(t.hover))
+              .hover((el) => el.bg(t.hover).text_color(t.foreground))
               .on_click((_e, cx) => this.fetchQuota(cx))
               .tooltip("Refresh live quota")
               .child(
-                svg("mods/workspace-chrome/spinner.svg")
-                  .size(10)
+                svg("mods/hegar/refresh.svg")
+                  .size(12)
                   .text_color(t.dim)
                   .when(
                     this.agentQuotas.antigravity.loading || this.agentQuotas.claude.loading,

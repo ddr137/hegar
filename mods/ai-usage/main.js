@@ -318,11 +318,11 @@ export default class AIUsageView extends View {
                   .items_center()
                   .justify_center()
                   .cursor_pointer()
-                  .hover((el) => el.bg(t.hover))
+                  .hover((el) => el.bg(t.hover).text_color(t.foreground))
                   .on_click((_e, cx) => this.fetchData(cx))
                   .tooltip("Refresh")
                   .child(
-                    svg("mods/workspace-chrome/spinner.svg")
+                    svg("mods/ai-usage/refresh.svg")
                       .size(12)
                       .text_color(t.dim)
                       .when(this.loading, (el) => el.spin(900)),

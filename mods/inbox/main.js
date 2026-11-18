@@ -534,10 +534,10 @@ export default class InboxView extends View {
               .items_center()
               .justify_center()
               .cursor_pointer()
-              .hover((el) => el.bg(t.hover))
+              .hover((el) => el.bg(t.hover).text_color(t.foreground))
               .on_click((_e, cx) => this.refreshSnippets(cx))
-              .tooltip("Refresh")
-              .child(svg("mods/workspace-chrome/spinner.svg").size(12).text_color(t.dim)),
+              .tooltip("Refresh Inbox")
+              .child(svg("mods/inbox/refresh.svg").size(13).text_color(t.dim)),
           ),
       )
       // Filter Sub-bar: Needs You, Working, Done, Idle, All
