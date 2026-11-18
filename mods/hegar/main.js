@@ -293,78 +293,42 @@ export default class HegarUnifiedSidebar extends View {
 
   statusBadge(t, status) {
     if (status === "working") {
-      return h_flex()
-        .gap(4)
-        .items_center()
-        .px(6)
-        .h(18)
-        .rounded(4)
-        .bg(t.working ? t.working + "20" : "#3b82f620")
-        .child(
-          svg("mods/workspace-chrome/spinner.svg")
-            .size(10)
-            .flex_none()
-            .text_color(t.working ?? "#3b82f6")
-            .spin(900),
-        )
-        .child(
-          div()
-            .text_size(10)
-            .font_medium()
-            .text_color(t.working ?? "#3b82f6")
-            .child("Working"),
-        );
+      return svg("mods/workspace-chrome/spinner.svg")
+        .size(12)
+        .mx(2)
+        .flex_none()
+        .text_color(t.working)
+        .spin(900);
     }
     if (status === "blocked") {
-      return h_flex()
-        .gap(4)
-        .items_center()
+      return div()
+        .flex_none()
         .px(6)
         .h(18)
-        .rounded(4)
-        .bg(t.blocked ? t.blocked + "26" : "#ef444426")
-        .child(
-          div()
-            .size(6)
-            .rounded_full()
-            .bg(t.blocked ?? "#ef4444"),
-        )
-        .child(
-          div()
-            .text_size(10)
-            .font_semibold()
-            .text_color(t.blocked ?? "#ef4444")
-            .child("Needs you"),
-        );
+        .rounded(5)
+        .bg((t.blocked ?? "#ef4444") + "26")
+        .text_size(10.5)
+        .font_semibold()
+        .text_color(t.blocked ?? "#ef4444")
+        .flex()
+        .items_center()
+        .child("Needs you");
     }
     if (status === "done") {
-      return h_flex()
-        .gap(4)
-        .items_center()
-        .px(6)
-        .h(18)
+      return div()
+        .size(7)
+        .mx(3)
+        .flex_none()
         .rounded(4)
-        .bg(t.done ? t.done + "20" : "#22c55e20")
-        .child(
-          div()
-            .size(6)
-            .rounded_full()
-            .bg(t.done ?? "#22c55e"),
-        )
-        .child(
-          div()
-            .text_size(10)
-            .font_medium()
-            .text_color(t.done ?? "#22c55e")
-            .child("Done"),
-        );
+        .bg(t.done ?? t.ansi2 ?? "#22c55e");
     }
     return div()
-      .size(6)
-      .mx(2)
-      .rounded_full()
-      .border(1)
-      .border_color(t.dim ?? "#888");
+      .size(7)
+      .mx(3)
+      .flex_none()
+      .rounded(4)
+      .border(1.5)
+      .border_color(t.idle ?? t.dim ?? "#888");
   }
 
   openSpaceMenu(spaceId) {
@@ -390,20 +354,20 @@ export default class HegarUnifiedSidebar extends View {
   renderSubRow(t, item, shownAddress, listedMap) {
     const k = item.t;
     const st = kidStatus(k, listedMap);
-    const pic = icon(k.program, 12, t.foreground);
+    const pic = icon(k.program, 14, t.foreground);
     const isFocused = k.address === shownAddress;
 
     return h_flex()
       .id(`sub-${k.address}`)
       .pl(28)
       .pr(8)
-      .h(24)
-      .gap(3)
+      .h(26)
+      .gap(4)
       .items_center()
-      .rounded(6)
-      .text_size(11.5)
-      .when(isFocused, (el) => el.bg(t.raised ?? "#222"))
-      .hover((el) => el.bg(t.hover))
+      .rounded(8)
+      .text_size(12.5)
+      .when(isFocused, (el) => el.bg(t.selected))
+      .when(!isFocused, (el) => el.hover((el) => el.bg(t.hover)))
       .cursor_pointer()
       .on_click(() => {
         if (listedMap.has(k.address)) {
@@ -424,6 +388,7 @@ export default class HegarUnifiedSidebar extends View {
         div()
           .flex_1()
           .truncate()
+          .text_size(12.5)
           .text_color(isFocused ? t.foreground : t.muted)
           .child(clean(k.title) || k.program?.name || "Sub-agent"),
       )
@@ -432,7 +397,7 @@ export default class HegarUnifiedSidebar extends View {
 
   renderAgentRow(t, a, allTerminals, shownAddress, listedMap, cx) {
     const isFolded = this.foldedAgents.has(a.address);
-    const pic = icon(a.program, 14, t.foreground);
+    const pic = icon(a.program, 16, t.foreground);
     const subs = getSubAgentTree(allTerminals, a.address);
     const hasSubs = subs.length > 0;
     const isFocused = a.address === shownAddress;
@@ -441,19 +406,19 @@ export default class HegarUnifiedSidebar extends View {
       .id(`agent-${a.address}`)
       .pl(22)
       .pr(8)
-      .h(28)
+      .h(30)
       .gap(6)
       .items_center()
-      .rounded(6)
-      .when(isFocused, (el) => el.bg(t.raised ?? "#222"))
-      .hover((el) => el.bg(t.hover))
+      .rounded(8)
+      .when(isFocused, (el) => el.bg(t.selected))
+      .when(!isFocused, (el) => el.hover((el) => el.bg(t.hover)))
       .cursor_pointer()
       .on_click(() => run("pane.focus", { terminal: a.address }))
       .on_mouse_down("right", () => this.openPaneMenu(a.pane, a.address))
       .when(hasSubs, (el) =>
         el.child(
           div()
-            .size(14)
+            .size(16)
             .flex_none()
             .flex()
             .items_center()
@@ -470,18 +435,18 @@ export default class HegarUnifiedSidebar extends View {
             })
             .child(
               svg(`mods/workspace-chrome/chevron-${isFolded ? "right" : "down"}.svg`)
-                .size(10)
+                .size(11)
                 .text_color(t.dim),
             ),
         ),
       )
-      .when(!hasSubs, (el) => el.child(div().size(14).flex_none()))
+      .when(!hasSubs, (el) => el.child(div().size(16).flex_none()))
       .when(Boolean(pic), (el) => el.child(pic))
       .child(
         div()
           .flex_1()
           .truncate()
-          .text_size(12)
+          .text_size(13)
           .font_medium()
           .text_color(isFocused ? t.foreground : t.muted)
           .child(clean(a.title) || a.program?.name || "Agent"),
@@ -604,10 +569,10 @@ export default class HegarUnifiedSidebar extends View {
       .relative()
       .id(`space-${s.id}`)
       .px(8)
-      .h(31)
+      .h(30)
       .justify_center()
-      .rounded(6)
-      .when(s.active && !isDragged, (el) => el.bg(t.raised).border(1).border_color(t.border))
+      .rounded(8)
+      .when(s.active && !isDragged, (el) => el.bg(t.selected))
       .when(!s.active && !isDragged && !isOver, (el) => el.hover((el) => el.bg(t.hover)))
       .when(isDragged, (el) =>
         el
@@ -722,7 +687,7 @@ export default class HegarUnifiedSidebar extends View {
               .child(
                 div()
                   .font_semibold()
-                  .text_size(12)
+                  .text_size(13)
                   .text_color(s.active ? t.foreground : t.muted)
                   .truncate()
                   .child(s.name),
@@ -732,8 +697,8 @@ export default class HegarUnifiedSidebar extends View {
                   h_flex()
                     .gap(3)
                     .items_center()
-                    .child(svg("mods/workspace-chrome/branch.svg").size(10).text_color(t.dim))
-                    .child(div().text_size(10.5).text_color(t.dim).truncate().child(s.branch)),
+                    .child(svg("mods/workspace-chrome/branch.svg").size(11).text_color(t.dim))
+                    .child(div().text_size(11.5).text_color(t.dim).truncate().child(s.branch)),
                 ),
               ),
           )
@@ -826,8 +791,8 @@ export default class HegarUnifiedSidebar extends View {
     const tabItem = (key, label) => {
       const on = this.selectedAgentTab === key;
       return div()
-        .px(6)
-        .h(20)
+        .px(7)
+        .h(22)
         .rounded(4)
         .flex()
         .items_center()
@@ -838,7 +803,7 @@ export default class HegarUnifiedSidebar extends View {
         .border_color(on ? t.border : "#00000000")
         .text_color(on ? t.foreground : t.dim)
         .font_medium()
-        .text_size(10)
+        .text_size(11)
         .hover((el) => el.bg(t.hover).text_color(t.foreground))
         .on_click((_e, cx) => {
           this.selectedAgentTab = key;
@@ -882,25 +847,25 @@ export default class HegarUnifiedSidebar extends View {
         .child(
           h_flex()
             .items_center()
-            .gap(4)
-            .text_size(9.5)
+            .gap(5)
+            .text_size(11)
             .child(div().text_color(t.dim).child("Account:"))
             .child(div().font_medium().text_color(emailBlue).truncate().child(q.account)),
         )
         // GEMINI MODELS
         .child(
           v_flex()
-            .gap(3)
+            .gap(4)
             .child(
               div()
-                .text_size(10)
-                .font_bold()
+                .text_size(11)
+                .font_semibold()
                 .text_color(t.foreground)
                 .child("GEMINI MODELS"),
             )
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(t.dim)
                 .child("Models within this group: Gemini 3.8 Flash"),
             )
@@ -909,15 +874,15 @@ export default class HegarUnifiedSidebar extends View {
               h_flex()
                 .items_center()
                 .justify_between()
-                .pt(1)
-                .text_size(9)
+                .pt(2)
+                .text_size(11)
                 .child(div().text_color(t.muted).child("Weekly Limit Remaining"))
-                .child(div().font_bold().text_color(mintGreen).child(`${gWeekly}%`)),
+                .child(div().font_semibold().text_color(mintGreen).child(`${gWeekly}%`)),
             )
             .child(quotaBar(gWeekly))
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(mintGreen)
                 .child(formatResetTime(q.gemini?.weeklyReset)),
             )
@@ -926,15 +891,15 @@ export default class HegarUnifiedSidebar extends View {
               h_flex()
                 .items_center()
                 .justify_between()
-                .pt(1)
-                .text_size(9)
+                .pt(2)
+                .text_size(11)
                 .child(div().text_color(t.muted).child("Five Hour Limit Remaining"))
-                .child(div().font_bold().text_color(mintGreen).child(`${g5h}%`)),
+                .child(div().font_semibold().text_color(mintGreen).child(`${g5h}%`)),
             )
             .child(quotaBar(g5h))
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(mintGreen)
                 .child(formatResetTime(q.gemini?.fiveHourReset)),
             ),
@@ -942,20 +907,20 @@ export default class HegarUnifiedSidebar extends View {
         // CLAUDE AND GPT MODELS
         .child(
           v_flex()
-            .gap(3)
-            .pt(2)
+            .gap(4)
+            .pt(4)
             .border_t(1)
             .border_color(t.border)
             .child(
               div()
-                .text_size(10)
-                .font_bold()
+                .text_size(11)
+                .font_semibold()
                 .text_color(t.foreground)
                 .child("CLAUDE AND GPT MODELS"),
             )
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(t.dim)
                 .child("Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B"),
             )
@@ -964,15 +929,15 @@ export default class HegarUnifiedSidebar extends View {
               h_flex()
                 .items_center()
                 .justify_between()
-                .pt(1)
-                .text_size(9)
+                .pt(2)
+                .text_size(11)
                 .child(div().text_color(t.muted).child("Weekly Limit Remaining"))
-                .child(div().font_bold().text_color(mintGreen).child(`${clWeekly}%`)),
+                .child(div().font_semibold().text_color(mintGreen).child(`${clWeekly}%`)),
             )
             .child(quotaBar(clWeekly))
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(mintGreen)
                 .child("Quota available"),
             )
@@ -981,15 +946,15 @@ export default class HegarUnifiedSidebar extends View {
               h_flex()
                 .items_center()
                 .justify_between()
-                .pt(1)
-                .text_size(9)
+                .pt(2)
+                .text_size(11)
                 .child(div().text_color(t.muted).child("Five Hour Limit Remaining"))
-                .child(div().font_bold().text_color(mintGreen).child(`${cl5h}%`)),
+                .child(div().font_semibold().text_color(mintGreen).child(`${cl5h}%`)),
             )
             .child(quotaBar(cl5h))
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(mintGreen)
                 .child("Quota available"),
             ),
@@ -1024,12 +989,12 @@ export default class HegarUnifiedSidebar extends View {
         // Current session
         .child(
           v_flex()
-            .gap(2)
+            .gap(3)
             .child(
               h_flex()
                 .items_center()
                 .justify_between()
-                .text_size(9.5)
+                .text_size(11)
                 .child(div().font_medium().text_color(t.foreground).child("Current session"))
                 .child(div().text_color(t.dim).child(`${sessPct}% used`)),
             )
@@ -1038,19 +1003,19 @@ export default class HegarUnifiedSidebar extends View {
         // Current week (all models)
         .child(
           v_flex()
-            .gap(2)
+            .gap(3)
             .child(
               h_flex()
                 .items_center()
                 .justify_between()
-                .text_size(9.5)
-                .child(div().font_bold().text_color(t.foreground).child("Current week (all models)"))
-                .child(div().font_bold().text_color(claudeLavender).child(`${weekPct}% used`)),
+                .text_size(11)
+                .child(div().font_medium().text_color(t.foreground).child("Current week (all models)"))
+                .child(div().font_semibold().text_color(claudeLavender).child(`${weekPct}% used`)),
             )
             .child(claudeBar(weekPct))
             .child(
               div()
-                .text_size(8.5)
+                .text_size(10.5)
                 .text_color(t.dim)
                 .child(q.resetTime ? `Resets ${q.resetTime}` : "Weekly quota"),
             ),
@@ -1059,20 +1024,20 @@ export default class HegarUnifiedSidebar extends View {
         .when(Boolean(q.topMcp), (el) =>
           el.child(
             v_flex()
-              .gap(2)
-              .pt(2)
+              .gap(3)
+              .pt(3)
               .border_t(1)
               .border_color(t.border)
               .child(
                 div()
-                  .text_size(9)
-                  .font_bold()
+                  .text_size(10.5)
+                  .font_semibold()
                   .text_color(t.dim)
                   .child("TOP MCP SERVERS"),
               )
               .child(
                 div()
-                  .text_size(8.5)
+                  .text_size(10.5)
                   .text_color(t.muted)
                   .child(q.topMcp),
               ),
@@ -1166,34 +1131,16 @@ export default class HegarUnifiedSidebar extends View {
           .justify_between()
           .text_size(11.5)
           .text_color(t.dim)
-          .child(
-            h_flex()
-              .gap(6)
-              .items_center()
-              .child(div().child("Spaces"))
-              .when(sps.length > 0, (el) =>
-                el.child(
-                  div()
-                    .px(5)
-                    .py(0.5)
-                    .rounded(4)
-                    .border_1()
-                    .border_color(t.border)
-                    .text_size(10)
-                    .text_color(t.dim)
-                    .child(String(sps.length)),
-                ),
-              ),
-          )
+          .child(div().child("Spaces"))
           .child(
             div()
               .id("space-new")
-              .size(24)
+              .size(26)
               .flex_none()
               .flex()
               .items_center()
               .justify_center()
-              .rounded(5)
+              .rounded(6)
               .text_color(t.dim)
               .hover((el) => el.bg(t.hover).text_color(t.foreground))
               .cursor_pointer()

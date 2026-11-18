@@ -179,19 +179,19 @@ export default class AIUsageView extends View {
                 .child(div().text_size(11).font_bold().text_color(emerald).child(`${q.geminiWeeklyPct}%`)),
             )
             .child(div().text_size(10.5).text_color(t.dim).child("Models within this group: Gemini 3.8 Flash"))
-            .child(div().text_size(10).font_medium().text_color(t.muted).child("Weekly Limit Remaining"))
+            .child(div().text_size(11).font_medium().text_color(t.muted).child("Weekly Limit Remaining"))
             .child(progressBar(q.geminiWeeklyPct, emerald))
-            .child(div().text_size(10).text_color(t.dim).child(formatResetTime(q.geminiWeeklyReset)))
+            .child(div().text_size(10.5).text_color(t.dim).child(formatResetTime(q.geminiWeeklyReset)))
             .child(div().h(2))
             .child(
               h_flex()
                 .items_center()
                 .justify_between()
-                .child(div().text_size(10).font_medium().text_color(t.muted).child("Five Hour Limit Remaining"))
-                .child(div().text_size(10).font_bold().text_color(emerald).child(`${q.gemini5hPct}%`)),
+                .child(div().text_size(11).font_medium().text_color(t.muted).child("Five Hour Limit Remaining"))
+                .child(div().text_size(11).font_bold().text_color(emerald).child(`${q.gemini5hPct}%`)),
             )
             .child(progressBar(q.gemini5hPct, emerald))
-            .child(div().text_size(10).text_color(t.dim).child(formatResetTime(q.gemini5hReset))),
+            .child(div().text_size(10.5).text_color(t.dim).child(formatResetTime(q.gemini5hReset))),
         )
         // CLAUDE & GPT MODELS
         .child(
@@ -208,23 +208,23 @@ export default class AIUsageView extends View {
                 .child(div().text_size(11).font_bold().text_color(accent).child(`${q.claudeGptWeeklyPct}%`)),
             )
             .child(div().text_size(10.5).text_color(t.dim).child("Claude Sonnet 4.6, Claude Opus 4.6, GPT-OSS 120B"))
-            .child(div().text_size(10).font_medium().text_color(t.muted).child("Weekly Limit Remaining"))
+            .child(div().text_size(11).font_medium().text_color(t.muted).child("Weekly Limit Remaining"))
             .child(progressBar(q.claudeGptWeeklyPct, accent))
-            .child(div().text_size(10).text_color(t.dim).child("Quota available"))
+            .child(div().text_size(10.5).text_color(t.dim).child("Quota available"))
             .child(div().h(2))
             .child(
               h_flex()
                 .items_center()
                 .justify_between()
-                .child(div().text_size(10).font_medium().text_color(t.muted).child("Five Hour Limit Remaining"))
-                .child(div().text_size(10).font_bold().text_color(accent).child(`${q.claudeGpt5hPct}%`)),
+                .child(div().text_size(11).font_medium().text_color(t.muted).child("Five Hour Limit Remaining"))
+                .child(div().text_size(11).font_bold().text_color(accent).child(`${q.claudeGpt5hPct}%`)),
             )
             .child(progressBar(q.claudeGpt5hPct, accent))
-            .child(div().text_size(10).text_color(t.dim).child("Quota available")),
+            .child(div().text_size(10.5).text_color(t.dim).child("Quota available")),
         )
         .child(
           div()
-            .text_size(10)
+            .text_size(10.5)
             .text_color(t.dim)
             .child("Within each group, models share a weekly limit and a 5-hour limit. Quota is consumed proportionally to token cost."),
         );
@@ -265,7 +265,7 @@ export default class AIUsageView extends View {
                 .child(div().text_size(11).font_bold().text_color(weekColor).child(`${q.weekPct}% used`)),
             )
             .child(progressBar(q.weekPct, weekColor))
-            .child(div().text_size(10).text_color(t.dim).child(`Resets ${q.resetTime}`)),
+            .child(div().text_size(10.5).text_color(t.dim).child(`Resets ${q.resetTime}`)),
         )
         // Top MCP servers
         .child(
@@ -276,9 +276,9 @@ export default class AIUsageView extends View {
             .bg(t.surface ?? "#18181b")
             .border(1)
             .border_color(t.border)
-            .child(div().text_size(10.5).font_bold().text_color(t.dim).child("TOP MCP USAGE BREAKDOWN"))
-            .child(div().text_size(10.5).text_color(t.foreground).child(q.topMcp || "figcraft: 49%, claude-in-chrome: 7%"))
-            .child(div().text_size(10).text_color(t.dim).child("Pro-tip: Start fresh with /clear or disable unused MCP servers to extend weekly quota.")),
+            .child(div().text_size(11).font_bold().text_color(t.dim).child("TOP MCP USAGE BREAKDOWN"))
+            .child(div().text_size(11).text_color(t.foreground).child(q.topMcp || "figcraft: 49%, claude-in-chrome: 7%"))
+            .child(div().text_size(10.5).text_color(t.dim).child("Pro-tip: Start fresh with /clear or disable unused MCP servers to extend weekly quota.")),
         );
     }
 
