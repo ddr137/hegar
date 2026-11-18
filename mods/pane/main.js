@@ -59,6 +59,13 @@ export default class Pane extends View {
     this.angle = 0;
     this.busy = false;
 
+    // Clean up any accidental orphan chat panes created by pane.split
+    for (const p of panes()) {
+      if (p.mod === "chat") {
+        run("pane.close", { pane: p.pane });
+      }
+    }
+
     // Rotating gradient animation when focused
     cx.timer.every(40, (cx) => {
       const p = this.me();
