@@ -52,28 +52,8 @@ export default class ChatView extends View {
     return panes().find((p) => p.pane === props()?.pane);
   }
 
-  async toTerminal(cx) {
-    if (this.busy) return;
-    this.busy = true;
-    try {
-      const myPane = this.me()?.pane;
-      const res = await exec("herdr-app", [
-        "do",
-        "terminal.keep",
-        "--terminal",
-        this.terminal,
-        "--place",
-        "right",
-      ]);
-      const out = JSON.parse(res.stdout || "{}");
-      if (out.pane) {
-        run("pane.focus", { pane: out.pane });
-      }
-      if (myPane) {
-        await exec("herdr-app", ["do", "pane.close", "--pane", myPane]);
-      }
-    } catch {}
-    this.busy = false;
+  toTerminal(cx) {
+    run("layout.select", { stack: "main-stack", child: "main" });
     if (cx) cx.notify();
   }
 
@@ -685,6 +665,10 @@ export default class ChatView extends View {
     return v_flex()
       .size_full()
       .bg(t.background)
+      .rounded(10)
+      .border(1)
+      .border_color(t.border)
+      .overflow_hidden()
       // 1. Header with [ Terminal | Chat ] toggle & rotating gradient
       .child(this.renderHeader(t))
       // 2. Chat messages list

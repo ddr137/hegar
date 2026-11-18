@@ -73,32 +73,8 @@ export default class Pane extends View {
     return panes().find((p) => p.pane === props()?.pane);
   }
 
-  async toChat(p, cx) {
-    if (this.busy) return;
-    this.busy = true;
-    const terminal = p.terminal;
-    try {
-      const res = await exec("herdr-app", [
-        "do",
-        "pane.split",
-        "--direction",
-        "right",
-        "--pane",
-        p.pane,
-        "--mod",
-        "chat",
-        "--props",
-        JSON.stringify({ terminal }),
-      ]);
-      const out = JSON.parse(res.stdout || "{}");
-      if (out.pane) {
-        run("pane.focus", { pane: out.pane });
-        if (terminal) {
-          await exec("herdr-app", ["do", "terminal.park", "--terminal", terminal]);
-        }
-      }
-    } catch {}
-    this.busy = false;
+  toChat(p, cx) {
+    run("layout.select", { stack: "main-stack", child: "chat-pane" });
     if (cx) cx.notify();
   }
 
