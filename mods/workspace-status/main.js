@@ -213,7 +213,7 @@ export default class WorkspaceStatus extends View {
       .hover((s) => s.opacity(0.85))
       .tooltip("AI Quota: Claude & Antigravity Live Limits. Click for details.")
       .on_click((_e, cx) => {
-        openOverlay({ mod: "ai-usage", kind: "popup", width: 350, height: 420 });
+        openOverlay({ mod: "ai-usage", kind: "popup", width: 370, height: 500 });
       })
       .child(claudeBlock)
       .child(divider)
