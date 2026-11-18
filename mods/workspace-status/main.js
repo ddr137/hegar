@@ -1,6 +1,6 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, theme, run, window, keys, exec, setShared } from "herdr";
+import { spaces, agents, theme, run, window, keys, exec, openOverlay, setShared } from "herdr";
 
 function formatResetCompact(isoStr) {
   if (!isoStr) return "";
@@ -210,8 +210,11 @@ export default class WorkspaceStatus extends View {
       .gap(8)
       .items_center()
       .cursor_pointer()
-      .tooltip("AI Telemetry: Claude & Antigravity Live Limits. Click to refresh.")
-      .on_click((_e, cx) => this.fetchQuota(cx))
+      .hover((s) => s.opacity(0.85))
+      .tooltip("AI Quota: Claude & Antigravity Live Limits. Click for details.")
+      .on_click((_e, cx) => {
+        openOverlay({ mod: "ai-usage", kind: "popup", width: 350, height: 420 });
+      })
       .child(claudeBlock)
       .child(divider)
       .child(agyBlock);
