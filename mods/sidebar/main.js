@@ -1,15 +1,7 @@
-// Hégar: Unified Sidebar for Spaces, Agents, and Sub-agents
-// Supports:
-// 1. Browse/Create folder on New Space (+) with native folder picker
-// 2. Custom Logo / Emoji per Space with built-in interactive icon picker
-// 3. Multi-agent live AI Quota:
-//    - Antigravity: Live Models & Quota via `agy -p "/quota" --output-format json`
-//      (Gemini Weekly & 5h limits in mint green #7cdba0, Claude/GPT limits, reset timers)
-//    - Claude Code: Live /usage via `claude -p "/usage" --output-format json`
-//      (Session %, Weekly % in lavender #8b8fe8, MCP breakdown, reset timers)
-//    - Colors and bars exactly match native CLI screens; all bars shown directly without less/detail.
-// 4. Clean and elegant Spaces header without cluttered badges
-// 5. Smooth animated drag-and-drop rearrange with lift & shadow effects
+// Sidebar: the spaces, with their agents and sub-agents under them, as one list.
+//  - The + button opens a small menu (mod `spacemenu`): browse for a folder, or a terminal in home at once.
+//  - A space drags to a new place, drawn like the default list (the row dims, a line shows where it lands).
+//  - agent.next / agent.prev follow the list as drawn (setAgentOrder).
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
@@ -23,11 +15,10 @@ import {
   openOverlay,
   theme,
   shared,
-  setShared,
   window,
   layout,
-  exec,
-  pickFolder,
+  setAgentOrder,
+  home,
 } from "herdr";
 
 const MARK = {
@@ -38,12 +29,6 @@ const MARK = {
   ansi2: "#3fae6a",
   ansi1: "#d9649a",
 };
-
-const PRESET_ICONS = [
-  "🚀", "⚡", "💻", "🔥", "📦", "🌐", "🤖", "☕",
-  "🦊", "🐘", "🎯", "🛠️", "✨", "🌟", "💎", "🎨",
-  "🧠", "🧪", "📊", "📁", "💡", "🔧", "❤️", "🕹️",
-];
 
 function toggleSidebar() {
   run("layout.toggle", { id: "sidebar" });
@@ -78,81 +63,21 @@ const kidStatus = (k, listedMap) => {
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
 
-function formatResetTime(isoStr) {
-  if (!isoStr) return "Quota available";
-  const diffMs = new Date(isoStr).getTime() - Date.now();
-  if (diffMs <= 0) return "Refreshing soon";
-  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  if (totalHours > 48) {
-    const days = Math.floor(totalHours / 24);
-    const remHours = totalHours % 24;
-    return `Refreshes in ${days}d ${remHours}h`;
-  }
-  if (totalHours > 0) return `Refreshes in ${totalHours}h ${mins}m`;
-  return `Refreshes in ${mins}m`;
-}
-
 export default class HegarUnifiedSidebar extends View {
   init(_props, cx) {
     this.foldedSpaces = new Set();
     this.foldedAgents = new Set();
     this.pressed = null;
     this.over = null;
-    this.iconPickerSpaceId = null;
-    cx.timer.every(1000, (cx) => cx.notify());
-  }
-
-  async createSpaceWithBrowse(cx) {
-    try {
-      let chosen = null;
-      try {
-        if (typeof pickFolder === "function") {
-          chosen = await pickFolder({ prompt: "Select or Create Space Folder" });
-        }
-      } catch {
-        chosen = null;
+    // A press whose release never reached a row (let go outside the window) must not leave one dimmed. Checked every
+    // 2 s, and the window is redrawn only when one was let go: nothing else here changes with time.
+    cx.timer.every(2000, (cx) => {
+      if (this.pressed !== null && Date.now() - (this.pressedAt ?? 0) > 8000) {
+        this.pressed = null;
+        this.over = null;
+        cx.notify();
       }
-
-      if (!chosen) {
-        // Native macOS Cocoa Open Dialog with "New Folder" support via AppleScript
-        const res = await exec("osascript", [
-          "-e",
-          'POSIX path of (choose folder with prompt "Select or create folder for new Space:")',
-        ]);
-        if (res.code === 0 && res.stdout.trim()) {
-          chosen = res.stdout.trim();
-        }
-      }
-
-      if (chosen) {
-        const name = chosen.replace(/\/+$/, "").split("/").pop() || "Space";
-        run("space.new", { folder: chosen, name });
-      }
-    } catch {
-      // User canceled dialog
-    }
-    if (cx) cx.notify();
-  }
-
-  toggleIconPicker(spaceId, cx) {
-    this.iconPickerSpaceId = this.iconPickerSpaceId === spaceId ? null : spaceId;
-    if (cx) cx.notify();
-  }
-
-  setSpaceIcon(spaceId, icon, cx) {
-    const cur = shared("space.icons") ?? {};
-    setShared("space.icons", { ...cur, [spaceId]: icon });
-    this.iconPickerSpaceId = null;
-    if (cx) cx.notify();
-  }
-
-  clearSpaceIcon(spaceId, cx) {
-    const cur = { ...(shared("space.icons") ?? {}) };
-    delete cur[spaceId];
-    setShared("space.icons", cur);
-    this.iconPickerSpaceId = null;
-    if (cx) cx.notify();
+    });
   }
 
   statusBadge(t, status) {
@@ -288,7 +213,7 @@ export default class HegarUnifiedSidebar extends View {
         if (listedMap.has(k.address)) {
           run("pane.focus", { terminal: k.address });
         } else {
-          run("terminal.summon", { terminal: k.address });
+          run("terminal.peek", { terminal: k.address });
         }
       })
       .on_mouse_down("right", () => this.openPaneMenu(k.pane, k.address))
@@ -381,100 +306,11 @@ export default class HegarUnifiedSidebar extends View {
     ];
   }
 
-  renderIconPicker(t, s, cx) {
-    return v_flex()
-      .p(8)
-      .gap(6)
-      .rounded(8)
-      .bg(t.surface ?? "#1e1e24")
-      .border(1)
-      .border_color(t.accent ?? "#3b82f6")
-      .shadow_xl()
-      // Header
-      .child(
-        h_flex()
-          .items_center()
-          .justify_between()
-          .child(
-            div()
-              .text_size(11)
-              .font_bold()
-              .text_color(t.foreground)
-              .child("Choose Space Logo / Icon"),
-          )
-          .child(
-            div()
-              .size(18)
-              .flex()
-              .items_center()
-              .justify_center()
-              .rounded(4)
-              .text_color(t.dim)
-              .hover((el) => el.bg(t.hover).text_color(t.foreground))
-              .cursor_pointer()
-              .on_click((_e, cx) => this.toggleIconPicker(s.id, cx))
-              .child(svg("mods/pane/close.svg").size(10)),
-          ),
-      )
-      // Preset emoji grid
-      .child(
-        h_flex()
-          .flex_wrap()
-          .gap(4)
-          .children(
-            PRESET_ICONS.map((emoji) =>
-              div()
-                .size(24)
-                .flex()
-                .items_center()
-                .justify_center()
-                .rounded(5)
-                .bg(t.raised ?? "#26262e")
-                .hover((el) => el.bg(t.hover).border(1).border_color(t.accent))
-                .cursor_pointer()
-                .text_size(13)
-                .on_click((_e, cx) => this.setSpaceIcon(s.id, emoji, cx))
-                .child(emoji),
-            ),
-          ),
-      )
-      // Reset button
-      .child(
-        h_flex()
-          .items_center()
-          .justify_between()
-          .pt(4)
-          .border_t(1)
-          .border_color(t.border)
-          .child(
-            div()
-              .px(6)
-              .h(22)
-              .rounded(4)
-              .bg(t.hover ?? "#333")
-              .hover((el) => el.bg(t.surface))
-              .cursor_pointer()
-              .text_size(10.5)
-              .font_medium()
-              .text_color(t.muted)
-              .on_click((_e, cx) => this.clearSpaceIcon(s.id, cx))
-              .child("Reset to Default Letter"),
-          )
-          .child(
-            div()
-              .text_size(9.5)
-              .text_color(t.dim)
-              .child("Click avatar to change"),
-          ),
-      );
-  }
-
   renderSpaceCard(t, s, spaceIndex, spaceAgents, allTerminals, shownAddress, listedMap, allSpaces, cx) {
     const isFolded = this.foldedSpaces.has(s.id);
     const colorKey = shared("space.colors")?.[s.id] ?? "ansi4";
     const avatarFill = colorKey.startsWith("#") ? colorKey : (MARK[colorKey] ?? t[colorKey] ?? "#5b8def");
     const initial = ([...s.name][0] ?? "?").toUpperCase();
-    const customIcon = shared("space.icons")?.[s.id];
 
     const fromIndex = allSpaces.findIndex((x) => x.id === this.pressed);
     const isDragged = this.pressed === s.id;
@@ -490,40 +326,26 @@ export default class HegarUnifiedSidebar extends View {
       .h(30)
       .justify_center()
       .rounded(8)
-      .when(s.active && !isDragged, (el) => el.bg(t.selected))
-      .when(!s.active && !isDragged && !isOver, (el) => el.hover((el) => el.bg(t.hover)))
-      .when(isDragged, (el) =>
-        el
-          .bg(t.raised ?? "#252528")
-          .border(1.5)
-          .border_color(t.accent ?? "#3b82f6")
-          .shadow_2xl()
-          .opacity(0.88),
-      )
-      .when(isOver, (el) =>
-        el
-          .bg(t.hover ?? "#1e1e22")
-          .border(1)
-          .border_color((t.accent ?? "#3b82f6") + "66"),
-      )
+      .when(s.active, (el) => el.bg(t.selected))
+      .when(!s.active, (el) => el.hover((el) => el.bg(t.hover)))
+      .when(isDragged && this.over !== s.id, (el) => el.opacity(0.5))
       .when(isOver, (el) =>
         el.child(
           div()
             .absolute()
-            .left(4)
-            .right(4)
-            .h(3)
-            .rounded_full()
-            .bg(t.accent ?? "#3b82f6")
-            .shadow_lg()
-            .when(fromIndex < spaceIndex, (line) => line.bottom(-1))
-            .when(fromIndex > spaceIndex, (line) => line.top(-1)),
+            .left(0)
+            .right(0)
+            .h(2)
+            .bg(t.accent)
+            .when(fromIndex < spaceIndex, (line) => line.bottom(0))
+            .when(fromIndex > spaceIndex, (line) => line.top(0)),
         ),
       )
       .when(isDragged, (el) => el.cursor_grabbing())
       .when(!isDragged, (el) => el.cursor_grab())
       .on_mouse_down("left", () => {
         this.pressed = s.id;
+        this.pressedAt = Date.now();
         this.over = s.id;
       })
       .on_mouse_move((_e, cx) => {
@@ -560,6 +382,7 @@ export default class HegarUnifiedSidebar extends View {
               .items_center()
               .justify_center()
               .cursor_pointer()
+              .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
               .on_click((e, cx) => {
                 cx.stop_propagation();
                 if (isFolded) {
@@ -575,7 +398,7 @@ export default class HegarUnifiedSidebar extends View {
                   .text_color(s.active ? t.foreground : t.dim),
               ),
           )
-          // Space Avatar / Custom Logo
+          // Space avatar: its colour and first letter
           .child(
             h_flex()
               .size(18)
@@ -584,17 +407,10 @@ export default class HegarUnifiedSidebar extends View {
               .bg(avatarFill)
               .items_center()
               .justify_center()
-              .text_size(customIcon ? 11 : 10.5)
+              .text_size(10.5)
               .font_bold()
               .text_color("#ffffff")
-              .cursor_pointer()
-              .hover((el) => el.opacity(0.85))
-              .tooltip("Click to change space logo / icon")
-              .on_click((e, cx) => {
-                cx.stop_propagation();
-                this.toggleIconPicker(s.id, cx);
-              })
-              .child(customIcon ? customIcon : initial),
+              .child(initial),
           )
           .child(
             h_flex()
@@ -620,23 +436,7 @@ export default class HegarUnifiedSidebar extends View {
                 ),
               ),
           )
-          .when(isDragged, (el) =>
-            el.child(
-              h_flex()
-                .px(5)
-                .py(1)
-                .rounded(4)
-                .bg((t.accent ?? "#3b82f6") + "26")
-                .child(
-                  div()
-                    .text_size(9.5)
-                    .font_bold()
-                    .text_color(t.accent ?? "#3b82f6")
-                    .child("Moving"),
-                ),
-            ),
-          )
-          .when(!isDragged && hasBlocked, (el) =>
+          .when(hasBlocked, (el) =>
             el.child(
               div()
                 .px(5)
@@ -649,7 +449,7 @@ export default class HegarUnifiedSidebar extends View {
                 .child("!"),
             ),
           )
-          .when(!isDragged && !hasBlocked && hasWorking, (el) =>
+          .when(!hasBlocked && hasWorking, (el) =>
             el.child(
               svg("mods/workspace-chrome/spinner.svg")
                 .size(11)
@@ -657,7 +457,7 @@ export default class HegarUnifiedSidebar extends View {
                 .spin(900),
             ),
           )
-          .when(!isDragged && !hasBlocked && !hasWorking && spaceAgents.length > 0, (el) =>
+          .when(!hasBlocked && !hasWorking && spaceAgents.length > 0, (el) =>
             el.child(
               div()
                 .px(5)
@@ -672,11 +472,6 @@ export default class HegarUnifiedSidebar extends View {
       );
 
     const items = [header];
-
-    // Show inline icon picker if active for this space
-    if (this.iconPickerSpaceId === s.id) {
-      items.push(this.renderIconPicker(t, s, cx));
-    }
 
     if (isFolded) {
       return items;
@@ -745,6 +540,9 @@ export default class HegarUnifiedSidebar extends View {
       }
     }
 
+    // agent.next / agent.prev follow this list, in the order it is drawn
+    setAgentOrder([...sps.flatMap((s) => agentsBySpace.get(s.id).map((a) => a.address)), ...unassignedAgents.map((a) => a.address)]);
+
     return v_flex()
       .size_full()
       .bg(t.chrome ?? t.surface)
@@ -771,12 +569,12 @@ export default class HegarUnifiedSidebar extends View {
               .text_color(t.dim)
               .hover((el) => el.bg(t.hover).text_color(t.foreground))
               .cursor_pointer()
-              .on_click((_e, cx) => this.createSpaceWithBrowse(cx))
+              .on_click(() => openOverlay({ mod: "spacemenu", kind: "popup", width: 260, height: 108 }))
               .on_mouse_down("right", (_e, cx) => {
                 cx.stop_propagation();
-                run("space.new");
+                run("space.new", { folder: home(), machine: "" });
               })
-              .tooltip("New Space (Click to browse/create folder, Right-click for default)")
+              .tooltip("New space (right-click: a terminal in home at once)")
               .child(svg("mods/workspace-chrome/plus.svg").size(14)),
           ),
       )
@@ -828,6 +626,5 @@ export default class HegarUnifiedSidebar extends View {
             ),
           ),
       )
-      // Multi-Agent Live AI Quota & Usage Widget: Placed Directly Above the Bottom Divider;
   }
 }

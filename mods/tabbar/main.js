@@ -121,7 +121,7 @@ export default class Tabs extends View {
         .child(div().max_w(170).truncate().child(c.zoomed ? `${name} Z` : name))
         .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
         .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).rounded(3).bg(t[c.status])))
-        .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));
+        .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/paneheader/close.svg").size(12))));
     };
     const root = layout(), sidebar = find(root, "sidebar"), w = window();
     // Old saved rails and a dragged-narrow sidebar can be smaller than the window buttons.
@@ -131,6 +131,8 @@ export default class Tabs extends View {
     const panel = find(root, "panel"), body = find(root, "panel-body");
     const rawPanels = shared("workspace.panels");
     const enabled = Array.isArray(rawPanels) && rawPanels.includes("inbox") ? rawPanels : ["inbox", ...(rawPanels ?? ["files", "changes"])];
+    // Toolkit (skills and MCP) is part of Hégar, not one of Herdr's own panels, so the saved list never names it.
+    if (!enabled.includes("toolkit")) enabled.push("toolkit");
     this.syncPanel(space, panel, body, enabled);
     const blockedCount = agents().filter(a => a.status === "blocked").length;
     const panelButton = (id, label, icon, count = 0) => {
@@ -155,8 +157,9 @@ export default class Tabs extends View {
       .when(enabled.includes("inbox"), el => el.child(panelButton("inbox", "Inbox", "mods/inbox/inbox.svg", blockedCount)))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
-      .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
-        .child(button("maximize", w.platform === "windows" ? svg(`mods/tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
-        .child(button("close-window", w.platform === "windows" ? svg("mods/tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));
+      .when(enabled.includes("toolkit"), el => el.child(panelButton("toolkit", "Toolkit", "mods/toolkit/toolkit.svg")))
+      .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabbar/win-min.svg").size(16) : "−", () => run("window.minimize")))
+        .child(button("maximize", w.platform === "windows" ? svg(`mods/tabbar/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
+        .child(button("close-window", w.platform === "windows" ? svg("mods/tabbar/win-close.svg").size(16) : svg("mods/paneheader/close.svg").size(13), () => run("window.close"))));
   }
 }

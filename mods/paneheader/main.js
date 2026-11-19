@@ -1,10 +1,10 @@
 // A pane's header, for layouts that frame their panes:
-//   { "tab": "active", "pane": { "header": { "content": { "mod": "pane" } } } }
+//   { "tab": "active", "pane": { "header": { "content": { "mod": "paneheader" } } } }
 // Shows the program's icon (the app's program table), the agent's name or
 // the terminal's title, the folder, and the agent's status; buttons split, zoom and close
 // this pane. Props from the app: { pane, terminal }. Click: focus the pane.
 
-import { View, div, svg, image, PathBuilder, Background } from "gpui-kit";
+import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { panes, props, run, theme, home, layout, exec } from "herdr";
 
@@ -35,54 +35,14 @@ function folder(cwd) {
   return cwd === h ? "~" : cwd.startsWith(h + "/") ? "~" + cwd.slice(h.length) : cwd;
 }
 
-const RECT = () =>
-  PathBuilder.fill()
-    .move_to("0%", "0%")
-    .line_to("100%", "0%")
-    .line_to("100%", "100%")
-    .line_to("0%", "100%")
-    .close()
-    .build();
-
-const BORDER = () =>
-  PathBuilder.stroke(1.5)
-    .move_to("0%", "0%")
-    .line_to("100%", "0%")
-    .line_to("100%", "100%")
-    .line_to("0%", "100%")
-    .close()
-    .build();
-
 export default class Pane extends View {
   init(_props, cx) {
     this.hovered = false;
-    this.angle = 0;
     this.busy = false;
-
-    // Clean up any accidental orphan chat panes created by pane.split
-    for (const p of panes()) {
-      if (p.mod === "chat") {
-        run("pane.close", { pane: p.pane });
-      }
-    }
-
-    // Rotating gradient animation when focused
-    cx.timer.every(40, (cx) => {
-      const p = this.me();
-      if (p?.focused) {
-        this.angle = (this.angle + 4) % 360;
-        cx.notify();
-      }
-    });
   }
 
   me() {
     return panes().find((p) => p.pane === props()?.pane);
-  }
-
-  toChat(p, cx) {
-    run("layout.select", { stack: "main-stack", child: "chat-pane" });
-    if (cx) cx.notify();
   }
 
   button(t, id, icon, command, args) {
@@ -96,7 +56,7 @@ export default class Pane extends View {
         cx.stop_propagation();
         run(command, args);
       })
-      .child(svg(`mods/pane/${icon}.svg`).size(14));
+      .child(svg(`mods/paneheader/${icon}.svg`).size(14));
   }
 
   render(cx) {
@@ -108,7 +68,6 @@ export default class Pane extends View {
     const st = p.status;
     const pane = p.pane;
     const bottom = paneFrame(layout())?.header?.position === "bottom";
-    const isAgent = Boolean(p.program?.agent || p.terminal);
 
     return h_flex()
       .id(`pane-head-${pane}`)
@@ -165,69 +124,6 @@ export default class Pane extends View {
       )
       .when(st === "done", (el) =>
         el.child(div().size(7).flex_none().rounded(4).bg(t.done)),
-      )
-      // Switch [ Terminal | Chat ] toggle button
-      .when(isAgent, (el) =>
-        el.child(
-          h_flex()
-            .p(1.5)
-            .gap(2)
-            .rounded(5)
-            .bg(t.raised ?? "#222228")
-            .border(1)
-            .border_color(t.border)
-            .child(
-              div()
-                .px(7)
-                .py(1.5)
-                .rounded(4)
-                .text_size(10.5)
-                .font_semibold()
-                .bg(t.accent ?? "#3b82f6")
-                .text_color("#ffffff")
-                .child("Terminal"),
-            )
-            .child(
-              div()
-                .px(7)
-                .py(1.5)
-                .rounded(4)
-                .text_size(10.5)
-                .font_medium()
-                .text_color(t.dim)
-                .hover((el) => el.bg(t.hover).text_color(t.foreground))
-                .cursor_pointer()
-                .on_click((e, cx) => {
-                  cx.stop_propagation();
-                  this.toChat(p, cx);
-                })
-                .child("Chat"),
-            ),
-        ),
-      )
-      // Rotating Gradient Section Border & Accent Line when active/focused!
-      .when(p.focused, (el) =>
-        el
-          .child(
-            window.paint_path(
-              BORDER(),
-              Background.linear_gradient(this.angle, "#38bdf8", "#ec4899"),
-            ).absolute().top(0).left(0).size_full(),
-          )
-          .child(
-            div()
-              .absolute()
-              .bottom(bottom ? 29 : -1)
-              .left(0)
-              .right(0)
-              .h(2.5)
-              .child(
-                window.paint_path(
-                  RECT(),
-                  Background.linear_gradient(this.angle, "#38bdf8", "#ec4899"),
-                ),
-              ),
-          ),
       )
       // Hover Actions (Split, Zoom, Close)
       .when(this.hovered, (el) =>
