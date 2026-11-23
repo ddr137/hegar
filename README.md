@@ -26,7 +26,7 @@ The layout itself is `layouts/hegar.json`. It also uses Herdr's shipped `workspa
 ### Sidebar and spaces
 
 - One tree: spaces → agents → sub-agents, with program icons (Claude Code, OpenCode, Antigravity), live titles and status badges (`Needs you`, `Working`, `Done`, `Idle`).
-- Sub-agents are both terminals an agent started through Herdr and Claude Code's own sub-agents (Agent tool, forks, background agents), which run inside Claude's terminal; those are read from Claude's session folder and clicking one focuses its parent.
+- Sub-agents are both terminals an agent started through Herdr and the agents' own sub-agents, which run inside their parent's terminal: Claude Code's (Agent tool, forks, background agents) and Antigravity's (shown by role, Working or Idle). Those are read from each agent's session folder; clicking one focuses its parent.
 - The `+` button opens a small menu: pick a folder with the system folder picker, or start a terminal in `~` at once. Right-click `+` for the second directly.
 - Drag a space to reorder it: the row dims and a line shows where it lands.
 - `agent.next` / `agent.prev` follow the order drawn in the sidebar.

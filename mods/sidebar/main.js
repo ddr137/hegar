@@ -36,7 +36,42 @@ const RUNNING_SUBAGENTS = `for m in "$1"/*.meta.json; do
   printf '%s\t' "$(basename "$m" .meta.json)"; tr -d '\n' < "$m"; echo
 done`;
 
-const isClaude = (a) => /claude/i.test(`${a.app ?? ""} ${a.program?.key ?? ""} ${a.program?.name ?? ""}`);
+// Antigravity keeps one `brain/<conversation>/.system_generated/subagents/<id>.json` per sub-agent, with `state`
+// SUBAGENT_STATE_ALIVE or SUBAGENT_STATE_KILLED. One that finished its work stays ALIVE (it can be given more), so
+// a living one is "working" while its own transcript changed in the last 2 minutes and "idle" otherwise.
+// Prints `<id>\t<working|idle>\t<json>` per living one.
+const ANTIGRAVITY_SUBAGENTS = `for f in "$1"/*.json; do
+  [ -f "$f" ] || continue
+  grep -q 'SUBAGENT_STATE_ALIVE' "$f" || continue
+  id=$(basename "$f" .json)
+  if [ -n "$(find "$2/$id/.system_generated/logs/transcript.jsonl" -mmin -2 2>/dev/null)" ]; then s=working; else s=idle; fi
+  printf '%s\t%s\t' "$id" "$s"; tr -d '\n' < "$f"; echo
+done`;
+
+const appOf = (a) => `${a.app ?? ""} ${a.program?.key ?? ""} ${a.program?.name ?? ""}`.toLowerCase();
+const isClaude = (a) => /claude/.test(appOf(a));
+const isAntigravity = (a) => /antigravity|agy/.test(appOf(a));
+
+async function antigravitySubagents(a) {
+  if (String(a.address).includes("/")) return [];
+  const term = terminals().find((x) => x.address === a.address);
+  const base = `${home()}/.gemini/antigravity-cli`;
+  const map = JSON.parse((await readTextFile(`${base}/cache/last_conversations.json`)) || "{}");
+  const id = map[term?.foreground?.cwd || term?.cwd];
+  if (!id || !/^[0-9a-f-]+$/i.test(id)) return [];
+  const r = await exec("sh", ["-c", ANTIGRAVITY_SUBAGENTS, "sh", `${base}/brain/${id}/.system_generated/subagents`, `${base}/brain`]);
+  const out = [];
+  for (const line of r.stdout.split("\n")) {
+    const [sid, status, ...rest] = line.split("\t");
+    if (!rest.length) continue;
+    try {
+      const m = JSON.parse(rest.join("\t"));
+      const d = m.subagentDescriptor ?? {};
+      out.push({ id: sid, title: String(d.role || d.typeName || "Sub-agent"), status: status === "working" ? "working" : "idle" });
+    } catch {}
+  }
+  return out;
+}
 
 async function claudeSubagents(a) {
   if (String(a.address).includes("/")) return []; // on another machine: its files are there
@@ -54,7 +89,7 @@ async function claudeSubagents(a) {
     if (tab < 0) continue;
     try {
       const m = JSON.parse(line.slice(tab + 1));
-      out.push({ id: line.slice(0, tab), title: String(m.description || m.agentType || "Sub-agent"), kind: String(m.agentType ?? "") });
+      out.push({ id: line.slice(0, tab), title: String(m.description || m.agentType || "Sub-agent"), status: "working" });
     } catch {}
   }
   return out;
@@ -120,15 +155,18 @@ export default class HegarUnifiedSidebar extends View {
       }
     });
     if (checking()) return; // `herdr-app check` runs init for real: no reads, no timer
-    // Claude Code's sub-agents are not Herdr data, so they are read: every 4 s, and only for Claude agents that are
-    // working or still have a sub-agent running. Nothing runs while no Claude agent is busy.
+    // Claude Code's and Antigravity's own sub-agents are not Herdr data, so they are read: every 4 s, and only for
+    // agents of theirs that are busy (working, or waiting on you) or still have a sub-agent. Nothing runs otherwise.
     this.readInner(cx);
     cx.timer.every(4000, (cx) => this.readInner(cx));
   }
 
   readInner(cx) {
     if (this.readingInner) return;
-    const ags = agents().filter((a) => isClaude(a) && (a.status === "working" || this.inner.get(a.address)?.length));
+    const first = !this.readInnerOnce; // the first read looks at every agent of theirs, busy or not
+    this.readInnerOnce = true;
+    const busy = (a) => first || a.status === "working" || a.status === "blocked" || this.inner.get(a.address)?.length;
+    const ags = agents().filter((a) => (isClaude(a) || isAntigravity(a)) && busy(a));
     if (!ags.length && !this.inner.size) return;
     this.readingInner = true;
     cx.spawn(async (cx) => {
@@ -136,14 +174,14 @@ export default class HegarUnifiedSidebar extends View {
       try {
         for (const a of ags) {
           try {
-            const subs = await claudeSubagents(a);
+            const subs = await (isClaude(a) ? claudeSubagents(a) : antigravitySubagents(a));
             if (subs.length) next.set(a.address, subs);
           } catch {}
         }
       } finally {
         this.readingInner = false;
       }
-      const key = (m) => JSON.stringify([...m].map(([k, v]) => [k, v.map((x) => x.id + x.title)]));
+      const key = (m) => JSON.stringify([...m].map(([k, v]) => [k, v.map((x) => x.id + x.title + x.status)]));
       if (key(next) !== key(this.inner)) {
         this.inner = next;
         cx.notify();
@@ -176,7 +214,7 @@ export default class HegarUnifiedSidebar extends View {
           .text_color(isFocused ? t.foreground : t.muted)
           .child(sub.title),
       )
-      .child(this.statusBadge(t, "working"));
+      .child(this.statusBadge(t, sub.status));
   }
 
   statusBadge(t, status) {
