@@ -24,10 +24,10 @@ The window is divided into a dedicated left workspace sidebar and a flexible cen
      - `+` New Tab button.
      - Right-side Panel Buttons: `[Inbox (N)]` `[Files]` `[Changes]` `[Toolkit]` with active toggle highlight and pending notification counter badge.
    - **Work Body (`work-body`, row, padding 8px, gap 8px):**
-     - **Main Terminal (`main`, flex 1):** Active pane terminal block with 10px rounded corners, canvas background, pane header (split right, split down, zoom, close), and the default per-pane focus look: every pane frame has a neutral 1px border, and the pane that has the keyboard gets the accent colour all round. (A gradient focus colour was tried: the frame border is one flat colour and a mod cannot draw outside its block, so a gradient meant one ring around the whole pane area, which also coloured every terminal of a split tab. Reverted.)
-     - **Right Panel (`panel`, width 368px, resizable 280–900px, hidden by default):**
+     - **Main Terminal (`main`, flex 1):** Active tab's panes as cards with 10px rounded corners and 8px gaps, on the theme's background colour, each with a 30px pane header (status; split right, split down, zoom, close on hover). Every pane has a neutral 1px border, and the pane that has the keyboard gets the accent colour all round.
+     - **Right Panel (`panel`, width 368px, min 280px, max 900px, hidden by default):**
        - Stack (`panel-body`) housing `inbox` (mod `inbox`), `files` (mod `filesplus`), `changes` (mod `changesplus`) and `toolkit` (mod `toolkit`).
-       - All four panels share the identical outer card frame: `rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13)` and height 42px header.
+       - All four panels share the same card: 10px rounded corners, the theme's background colour, a 1px border in the theme's border colour, 13px text, and a 42px header.
        - **Inbox Panel (`inbox`):**
          - Header with Inbox icon, count badge of blocked agents, refresh button.
          - Filter bar: `[Needs you]` `[Working]` `[Done]` `[Idle]` `[All]`.
@@ -40,9 +40,9 @@ The window is divided into a dedicated left workspace sidebar and a flexible cen
 ## How it behaves
 
 - **Agent Status Lifecycle:**
-  - `blocked` (Needs you): Displayed with red theme color (`#ef4444`), bold "Needs you" badge in sidebar and tab bar, red notification pill counter on the `Inbox` button in the tab bar and header. In Inbox, presents the exact output question snippet and provides 1-click `✓ Approve (Yes)` (sends `y\n`), `✕ Reject (No)` (sends `n\n`), and direct text input with `Send ↵`.
-  - `working`: Displayed with blue theme color (`#3b82f6`), rotating 900ms spinner icon, "Working" badge. In Inbox, shows active processing indicator and `Stop` button (`hc interrupt`).
-  - `done`: Displayed with green theme color (`#22c55e`), "Done" badge. In Inbox, shows completion confirmation.
+  - `blocked` (Needs you): Displayed in the theme's `blocked` colour (`#ef4444` when the theme has none), bold "Needs you" badge in sidebar and tab bar, red notification pill counter on the `Inbox` button in the tab bar and header. In Inbox, presents the exact output question snippet and provides 1-click `✓ Approve (Yes)` (sends `y\n`), `✕ Reject (No)` (sends `n\n`), and direct text input with `Send ↵`.
+  - `working`: Displayed in the theme's `working` colour, rotating 900ms spinner icon, "Working" badge. In Inbox, shows active processing indicator and `Stop` button (`hc interrupt`).
+  - `done`: Displayed in the theme's `done` colour (`#22c55e` when the theme has none), "Done" badge. In Inbox, shows completion confirmation.
   - `idle`: Displayed with muted gray border dot. In Inbox, provides prompt dispatch box.
 
 - **Interactions & Clicks:**
