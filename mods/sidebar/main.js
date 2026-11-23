@@ -19,7 +19,46 @@ import {
   layout,
   setAgentOrder,
   home,
+  exec,
+  readTextFile,
+  checking,
 } from "herdr";
+
+// Claude Code's own sub-agents (Agent tool, forks, background agents) run inside its process and have no terminal,
+// so Herdr does not list them. Claude Code writes one `<session>/subagents/agent-<id>.meta.json` per sub-agent and
+// adds "finished": true when it ends. Prints `<id>\t<meta json>` for each one still running whose transcript moved in
+// the last 10 minutes (a session that was killed never writes "finished").
+const RUNNING_SUBAGENTS = `for m in "$1"/*.meta.json; do
+  [ -f "$m" ] || continue
+  grep -q '"finished":true' "$m" && continue
+  j="\${m%.meta.json}.jsonl"
+  [ -n "$(find "$j" -mmin -10 2>/dev/null)" ] || continue
+  printf '%s\t' "$(basename "$m" .meta.json)"; tr -d '\n' < "$m"; echo
+done`;
+
+const isClaude = (a) => /claude/i.test(`${a.app ?? ""} ${a.program?.key ?? ""} ${a.program?.name ?? ""}`);
+
+async function claudeSubagents(a) {
+  if (String(a.address).includes("/")) return []; // on another machine: its files are there
+  const term = terminals().find((x) => x.address === a.address);
+  const pid = term?.foreground?.pid;
+  if (!pid) return [];
+  const h = home();
+  const info = JSON.parse((await readTextFile(`${h}/.claude/sessions/${pid}.json`)) || "null");
+  if (!info?.sessionId) return [];
+  const dir = `${h}/.claude/projects/${String(info.cwd ?? term.cwd ?? "").replace(/[^a-zA-Z0-9]/g, "-")}/${info.sessionId}/subagents`;
+  const r = await exec("sh", ["-c", RUNNING_SUBAGENTS, "sh", dir]);
+  const out = [];
+  for (const line of r.stdout.split("\n")) {
+    const tab = line.indexOf("\t");
+    if (tab < 0) continue;
+    try {
+      const m = JSON.parse(line.slice(tab + 1));
+      out.push({ id: line.slice(0, tab), title: String(m.description || m.agentType || "Sub-agent"), kind: String(m.agentType ?? "") });
+    } catch {}
+  }
+  return out;
+}
 
 const MARK = {
   ansi6: "#22a99a",
@@ -69,6 +108,8 @@ export default class HegarUnifiedSidebar extends View {
     this.foldedAgents = new Set();
     this.pressed = null;
     this.over = null;
+    this.inner = new Map(); // agent address -> its running Claude Code sub-agents
+    this.readingInner = false;
     // A press whose release never reached a row (let go outside the window) must not leave one dimmed. Checked every
     // 2 s, and the window is redrawn only when one was let go: nothing else here changes with time.
     cx.timer.every(2000, (cx) => {
@@ -78,6 +119,64 @@ export default class HegarUnifiedSidebar extends View {
         cx.notify();
       }
     });
+    if (checking()) return; // `herdr-app check` runs init for real: no reads, no timer
+    // Claude Code's sub-agents are not Herdr data, so they are read: every 4 s, and only for Claude agents that are
+    // working or still have a sub-agent running. Nothing runs while no Claude agent is busy.
+    this.readInner(cx);
+    cx.timer.every(4000, (cx) => this.readInner(cx));
+  }
+
+  readInner(cx) {
+    if (this.readingInner) return;
+    const ags = agents().filter((a) => isClaude(a) && (a.status === "working" || this.inner.get(a.address)?.length));
+    if (!ags.length && !this.inner.size) return;
+    this.readingInner = true;
+    cx.spawn(async (cx) => {
+      const next = new Map();
+      try {
+        for (const a of ags) {
+          try {
+            const subs = await claudeSubagents(a);
+            if (subs.length) next.set(a.address, subs);
+          } catch {}
+        }
+      } finally {
+        this.readingInner = false;
+      }
+      const key = (m) => JSON.stringify([...m].map(([k, v]) => [k, v.map((x) => x.id + x.title)]));
+      if (key(next) !== key(this.inner)) {
+        this.inner = next;
+        cx.notify();
+      }
+    });
+  }
+
+  renderInnerRow(t, a, sub, lines, isFocused) {
+    const pic = icon(a.program, 14, t.foreground);
+    return h_flex()
+      .id(`inner-${a.address}-${sub.id}`)
+      .pl(8)
+      .pr(8)
+      .h(26)
+      .gap(0)
+      .items_center()
+      .rounded(6)
+      .hover((el) => el.bg(t.hover))
+      .cursor_pointer()
+      .on_click(() => run("pane.focus", { terminal: a.address })) // it lives in its parent's terminal
+      .children(lines.map((l) => this.renderTreeGlyph(l, t, 26, 2)))
+      .child(div().w(4).flex_none())
+      .when(Boolean(pic), (el) => el.child(pic))
+      .child(div().w(6).flex_none())
+      .child(
+        div()
+          .flex_1()
+          .truncate()
+          .text_size(12)
+          .text_color(isFocused ? t.foreground : t.muted)
+          .child(sub.title),
+      )
+      .child(this.statusBadge(t, "working"));
   }
 
   statusBadge(t, status) {
@@ -237,7 +336,11 @@ export default class HegarUnifiedSidebar extends View {
     const pic = icon(a.program, 16, t.foreground);
     const isLastAgent = agentIndex === totalAgents - 1;
     const subs = getSubAgentTree(allTerminals, a.address, [isLastAgent ? "" : "│"]);
-    const hasSubs = subs.length > 0;
+    const inner = this.inner.get(a.address) ?? [];
+    const lead = isLastAgent ? "" : "│";
+    const innerRows = inner.map((sub, i) =>
+      this.renderInnerRow(t, a, sub, [lead, i === inner.length - 1 && !subs.length ? "└" : "├"], a.address === shownAddress));
+    const hasSubs = subs.length + inner.length > 0;
     const isFocused = a.address === shownAddress;
 
     const foldBtn = div()
@@ -266,7 +369,7 @@ export default class HegarUnifiedSidebar extends View {
           .size(10)
           .text_color(t.dim),
       )
-      .when(isFolded, (el) => el.child(String(subs.length)));
+      .when(isFolded, (el) => el.child(String(subs.length + inner.length)));
 
     const row = h_flex()
       .id(`agent-${a.address}`)
@@ -302,6 +405,7 @@ export default class HegarUnifiedSidebar extends View {
 
     return [
       row,
+      ...innerRows,
       ...subs.map((item) => this.renderSubRow(t, item, shownAddress, listedMap)),
     ];
   }
