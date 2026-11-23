@@ -1,6 +1,6 @@
 # Hégar · Herdr Layout
 
-A clean, GPU-accelerated workspace layout for AI-driven development in [Herdr](https://herdr.dev). It puts spaces, agents and sub-agents in one sidebar tree, adds an inbox for agents that wait on you, shows live AI quotas in the status bar, and adds a Toolkit panel to manage skills, subagents, MCP servers, plugins and hooks for Claude Code, OpenCode and Antigravity.
+A clean workspace layout for AI-driven development in [Herdr](https://herdr.dev). It puts spaces, agents and sub-agents in one sidebar tree, adds an inbox for agents that wait on you, shows live AI quotas in the status bar, and adds a Toolkit panel to manage skills, subagents, MCP servers, plugins and hooks for Claude Code, OpenCode and Antigravity.
 
 ![Hégar](preview.png)
 

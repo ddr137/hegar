@@ -1,6 +1,6 @@
 # Hégar
 
-A clean, GPU-accelerated workspace layout for AI-driven development in Herdr, featuring a unified left sidebar that brings together spaces, agents, and sub-agents into a single tree hierarchy with native folder browsing on space creation, live AI quota bars for Antigravity and Claude Code in the status bar, and a right panel stack of four cards: a Human-in-the-Loop Inbox for one-click approvals and question replies, Files (with image preview, Markdown and editing), Changes (with AI commit messages) and a Toolkit that manages skills, subagents, MCP servers, plugins and hooks for Claude Code, OpenCode and Antigravity. Spaces reorder by drag and drop.
+A clean workspace layout for AI-driven development in Herdr, featuring a unified left sidebar that brings together spaces, agents, and sub-agents into a single tree hierarchy with native folder browsing on space creation, live AI quota bars for Antigravity and Claude Code in the status bar, and a right panel stack of four cards: a Human-in-the-Loop Inbox for one-click approvals and question replies, Files (with image preview, Markdown and editing), Changes (with AI commit messages) and a Toolkit that manages skills, subagents, MCP servers, plugins and hooks for Claude Code, OpenCode and Antigravity. Spaces reorder by drag and drop.
 
 ![Hégar](preview.png)
 
