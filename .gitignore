@@ -1,2 +1,8 @@
 .DS_Store
 *.log
+
+# written into this folder by Toolkit (Apply) for the agents: skills, agents, MCP
+.agents/
+.claude/
+.opencode/
+.mcp.json
