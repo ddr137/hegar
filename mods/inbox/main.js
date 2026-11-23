@@ -153,6 +153,8 @@ export default class InboxView extends View {
     this.needsFollow = false; // an agent on the shown tab waits on you (set by render)
     this.lastMinute = -1;
     this.foldedProjects = new Set(); // space ids whose agents are folded away
+    this.makingInputs = false;
+    for (const a of agents()) this.ensureInput(a.address); // answer boxes exist before the first render
 
     if (checking()) return; // `herdr-app check` runs init for real: no reads, no timer
     this.refreshSnippets(cx);
@@ -513,7 +515,8 @@ export default class InboxView extends View {
     const isNeedsYou = a.status === "blocked" || a.status === "error";
     const isWorking = a.status === "working";
     const isDone = a.status === "done";
-    const inputState = this.ensureInput(a.address);
+    // made outside render (init, or a task render starts): Herdr refuses InputState.new during render
+    const inputState = this.inputs.get(a.address);
     const isTyping = this.typingMap.get(a.address) ?? false;
 
     return v_flex()
@@ -604,7 +607,9 @@ export default class InboxView extends View {
                     .flex()
                     .items_center()
                     .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-                    .child(Input.new(inputState).h_full().text_size(11).text_color(t.foreground)),
+                    .child(inputState
+                      ? Input.new(inputState).h_full().text_size(11).text_color(t.foreground)
+                      : div().text_size(11).text_color(t.dim).child("Type an answer or instruction to agent…")),
                 )
                 .child(
                   div()
@@ -774,6 +779,16 @@ export default class InboxView extends View {
       const m = this.meta.get(a.address);
       return !m || m.seq !== a.seq || m.status !== a.status;
     })) this.refreshSnippets(cx);
+    // an agent shown for the first time gets its answer box from a task, not from render itself
+    const missing = shownList.filter((a) => !this.inputs.has(a.address));
+    if (missing.length && !this.makingInputs) {
+      this.makingInputs = true;
+      cx.spawn(async (cx) => {
+        this.makingInputs = false;
+        for (const a of missing) this.ensureInput(a.address);
+        cx.notify();
+      });
+    }
 
     // Filter Tab Button
     const filterTab = (key, label, count, color) => {
