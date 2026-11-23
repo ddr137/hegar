@@ -6,3 +6,7 @@
 .claude/
 .opencode/
 .mcp.json
+
+# written by Herdr into every mod folder (editor types), not part of the mods
+mods/*/gpui-kit.d.ts
+mods/*/jsconfig.json
